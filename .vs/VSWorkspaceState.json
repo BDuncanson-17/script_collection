@@ -1,6 +1,10 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\scripts_collection",
+    "\\scripts_collection\\bash",
+    "\\scripts_collection\\powershell"
   ],
+  "SelectedNode": "\\scripts_collection\\bash\\s3_URI_to_yaml.sh",
   "PreviewInSolutionExplorer": false
 }
