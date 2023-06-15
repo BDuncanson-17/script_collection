@@ -1,10 +1,10 @@
 {
   "ExpandedNodes": [
     "",
-    "\\scripts_collection",
-    "\\scripts_collection\\bash",
-    "\\scripts_collection\\powershell"
+    "\\Batch",
+    "\\powershell",
+    "\\VBScripts"
   ],
-  "SelectedNode": "\\scripts_collection\\bash\\s3_URI_to_yaml.sh",
+  "SelectedNode": "\\powershell\\Rename-Volumes.ps1",
   "PreviewInSolutionExplorer": false
 }

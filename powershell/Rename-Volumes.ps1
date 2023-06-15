@@ -17,18 +17,20 @@
 
 # Define the drives and their new names
 $drives = @{
-    "E:\" = "Paging"
-    "T:\" = "Temp"
-    "Y:\" = "Oracle"
+    "E" = "Paging"
+    "T" = "Temp"
+    "Y" = "Oracle"
 }
 
 foreach ($drive in $drives.GetEnumerator()) {
-    $driveInfo = Get-WmiObject -Class Win32_LogicalDisk -Filter "DeviceID='$($drive.Key)'"
-
-    if ($driveInfo.VolumeName -eq "New Volume") {
-        Write-Host "Renaming $($drive.Key) from 'New Volume' to '$($drive.Value)'"
-        $driveInfo | Set-WmiInstance -Arguments @{VolumeName=$drive.Value}
+    $letter = $drive.Key
+    $name = $drives[$letter]
+    $volume = Get-Volume -DriveLetter $letter
+    
+    if ($volume.FileSystemLabel -eq "New Volume") {
+        Write-Host ("Renaming {0} from 'New Volume' to {1}" -f $letter, $name)
+        Set-Volume -NewFileSystemLabel $name -Path $volume.Path
     } else {
-        Write-Host "Skipping $($drive.Key) because its volume name is not 'New Volume'. Its current name is '$($driveInfo.VolumeName)'."
+        Write-Host ("Skipping {0} because its volume name is not 'New Volume'. Its current name is '{1}'." -f $letter, $volume.FileSystemLabel)
     }
 }
