@@ -1,0 +1,62 @@
+' Check if the folder path and file size are provided as command-line arguments
+If WScript.Arguments.Count < 2 Then
+    WScript.Echo "Usage: CScript CreateFiles.vbs <FolderPath> <FileSizeInMB>"
+    WScript.Quit
+End If
+
+' Get folder path and desired file size from command-line arguments
+FolderPath = WScript.Arguments(0)
+DesiredFileSizeMB = CInt(WScript.Arguments(1))
+
+' Calculate the desired file size in bytes
+FileSizeInBytes = DesiredFileSizeMB * 1024 * 1024
+
+' Create a FileSystemObject
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+' Function to check if the folder is empty
+Function IsFolderEmpty(FolderPath)
+    Set objFolder = objFSO.GetFolder(FolderPath)
+    IsFolderEmpty = (objFolder.Files.Count = 0)
+End Function
+
+' Function to create an empty file with the specified size
+Sub CreateEmptyFile(FilePath, FileSize)
+    Set objFile = objFSO.CreateTextFile(FilePath)
+    ' Write the specified number of bytes to the file (fill with null characters)
+    objFile.Write String(FileSize, Chr(0))
+    objFile.Close
+    Set objFile = Nothing
+End Sub
+
+Dim completionCount
+completionCount = 0
+
+Do While completionCount < 100
+    If IsFolderEmpty(FolderPath) Then
+        ' Generate a unique filename based on the current timestamp
+        CurrentTime = Now
+        FileName = "EmptyFile_" & Year(CurrentTime) & Month(CurrentTime) & Day(CurrentTime) & Hour(CurrentTime) & Minute(CurrentTime) & Second(CurrentTime) & ".dat"
+        FilePath = objFSO.BuildPath(FolderPath, FileName)
+
+        ' Create an empty file with the specified size
+        CreateEmptyFile FilePath, FileSizeInBytes
+        WScript.Echo "Created a " & DesiredFileSizeMB & "MB empty file in the folder."
+
+        ' Increment the completion count
+        completionCount = completionCount + 1
+    Else
+        WScript.Echo "Folder is not empty. No action taken."
+    End If
+
+    ' Sleep for an hour (in milliseconds)
+    WScript.Sleep 3600000
+Loop
+
+
+
+
+
+
+
+
