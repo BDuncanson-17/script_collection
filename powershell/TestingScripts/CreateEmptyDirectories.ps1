@@ -40,3 +40,62 @@ function New-EmptyDirectories {
 
 # Call the function to start the script
 New-EmptyDirectories
+
+# Initialize an empty array to hold output strings
+$outputArray = @()
+
+# Read the list of remote computers from a text file
+$remoteComputers = Get-Content "C:\path\to\computers.txt"  # Replace with the actual path to your text file
+
+# Function to get .NET Core/.NET 5+ versions from the file system
+function Get-DotNetCoreVersions {
+    <#
+    .SYNOPSIS
+    Retrieves .NET Core/.NET 5+ SDK and Runtime versions from a remote computer.
+
+    .PARAMETER computer
+    The name or IP address of the remote computer.
+
+    .EXAMPLE
+    Get-DotNetCoreVersions -computer "Computer1"
+    #>
+    param(
+        [string]$computer
+    )
+
+    # Define paths to .NET SDK and Runtime folders on the remote computer
+    $sdkPath = "\\$computer\C$\Program Files\dotnet\sdk"
+    $runtimePath = "\\$computer\C$\Program Files\dotnet\shared\Microsoft.NETCore.App"
+
+    # Initialize empty arrays to hold version information
+    $sdkVersions = @()
+    $runtimeVersions = @()
+
+    # Check if SDK path exists and list all versions if it does
+    if (Test-Path $sdkPath) {
+        $sdkVersions = Get-ChildItem -Path $sdkPath
+    }
+
+    # Check if Runtime path exists and list all versions if it does
+    if (Test-Path $runtimePath) {
+        $runtimeVersions = Get-ChildItem -Path $runtimePath
+    }
+
+    # Return the versions as a hashtable
+    return @{
+        "SDK" = $sdkVersions.Name
+        "Runtime" = $runtimeVersions.Name
+    }
+}
+
+# Loop through each remote computer and fetch .NET Core/.NET 5+ versions
+foreach ($computer in $remoteComputers) {
+    $coreVersions = Get-DotNetCoreVersions -computer $computer  # Call the function and store its output
+    $outputArray += "Checking .NET versions on $computer"
+    $outputArray += ".NET Core SDK Versions: $($coreVersions.SDK -join ', ')"
+    $outputArray += ".NET Core Runtime Versions: $($coreVersions.Runtime -join ', ')"
+    $outputArray += "`r`n"  # Add a newline separator
+}
+
+# Export the results to a text file
+$outputArray | Out-File -FilePath "C:\path\to\dotnet_versions.txt"  # Replace with the actual path where you want to save the file
