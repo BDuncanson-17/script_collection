@@ -1,0 +1,174 @@
+## PowerShell Hash Table: ECMServerMap
+### Description: This PowerShell hash table, named `$ECMServerMap`, maps keys like `MADBIOSCHED4`, `MADSCHED10`, etc., to their corresponding server names like `VDURMECMBS001`, `VDURMECMBS005`, etc.
+
+### Code:
+
+```powershell
+$ECMServerMap = @{
+    "MADBIOSCHED4" = "VDURMECMBS001"
+    "MADBIOSCHED5" = "VDURMECMBS002"
+    "MADBIOSCHED6" = "VDURMECMBS003"
+    "MADSCHED10"   = "VDURMECMBS005"
+    "MADSCHED11"   = "VDURMECMBS006"
+    "MADSCHED12"   = "VDURMECMBS007"
+    "MADSCHED13"   = "VDURMECMBS008"
+    "MADSCHED14"   = "VDURMECMBS009"
+    "MADSCHED15"   = "VDURMECMBS010"
+    "MADSCHED16"   = "VDURMECMBS011"
+    "MADSCHED17"   = "VDURMECMBS012"
+    "MADSCHED18"   = "VDURMECMBS013"
+    "MADSCHED19"   = "VDURMECMBS014"
+}
+
+# Paths
+$FileShare = "\\labs\madison\isoLib\agilent\ECMUpgrade\History"
+$ProtectedPath = "T:\ECM\SATasks"
+
+# Strings for replacing
+$RemoveStrs = @("\madecmas002.", "\ecm.")
+$ReplaceStrs = "\vdurmecmas002."
+
+
+$ApServices = @()
+$SchedServices = @()
+$SchedWinTasks = @()
+
+# Class definition
+class SchedulerClass {
+    [int] $SchedulerIdx
+    [string] $34Scheduler
+    [string] $36scheduler
+    $SchedulesStrings = New-Object System.Collections.ArrayList
+    $IndexedStrings = New-Object System.Collections.ArrayList
+    $idxMap = {}
+    
+    SchedulerClass ([string] $ServerName) {
+        $this.'34Scheduler' = $ServerName
+        $this.'36scheduler' = $ECMServerMap[$ServerName]
+        
+        $Path = "$FileShare\$ServerName\SATasks"
+        $directories = Get-ChildItem -Path $Path -Directory
+        
+        foreach ($dir in $directories) {
+            # Remove XML files in the directory
+            $xmlString = Join-Path $dir.FullName "*xml"
+            Remove-Item -Path $xmlString -ErrorAction SilentlyContinue
+            
+            # Replace strings in directory name
+            $splitPath = $dir.Name -split '/'
+            
+            $tmp = $Path + "\" + ($splitPath[-1] -replace ($RemoveStrs[0], $ReplaceStrs))
+            
+            if ($tmp -eq $dir.FullName) {
+                $tmp = $Path + "\" + ($splitPath[-1] -replace ($RemoveStrs[1], $ReplaceStrs))
+            }
+            
+            Move-Item -Path $dir.FullName -Destination $tmp
+
+			$this.IndexedStrings.add($splitPath[-1])
+            # Assuming nodel.txt exists under SATasks
+            
+        }
+        $this.SchedulesStrings.Add((Get-Content "$Path\nodel.txt"))
+        $this.SchedulesStrings.Sort()
+        $this.IndexedStrings.Sort()
+        
+        
+            
+    }
+
+	
+    
+}
+
+
+
+
+function Stop-ServicesFromArray($serviceNames) {
+    foreach ($serviceName in $serviceNames) {
+        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+        if ($service -ne $null) {
+            if ($service.Status -eq 'Running') {
+                Write-Host "Stopping service: $serviceName"
+                Stop-Service -Name $serviceName
+            } else {
+                Write-Host "Service $serviceName is not running."
+            }
+        } else {
+            Write-Host "Service $serviceName does not exist."
+        }
+    }
+}
+
+# Example usage
+$servicesToStop = @("wuauserv", "bits", "NonExistentService")
+Stop-ServicesFromArray -serviceNames $servicesToStop
+
+# Function to Start Services by Name Array
+function Start-ServicesByName {
+    param (
+        [string[]]$ServiceNames
+    )
+
+    if ($ServiceNames.Length -eq 0) {
+        Write-Host "Service names array is empty. Exiting..."
+        return
+    }
+
+    # Loop through each service name in the array
+    foreach ($serviceName in $ServiceNames) {
+        # Check if the service exists
+        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+
+        if ($service) {
+            # Check if the service is already running
+            if ($service.Status -eq 'Running') {
+                Write-Host "Service '$serviceName' is already running."
+            } else {
+                # Try to start the service
+                try {
+                    Start-Service -Name $serviceName
+                    Write-Host "Successfully started the service: $serviceName"
+                } catch {
+                    Write-Host "Failed to start the service: $serviceName. Error: $_"
+                }
+            }
+        } else {
+            Write-Host "Service '$serviceName' not found."
+        }
+    }
+}
+
+
+function StopScheduledTasks($taskNames) {
+    foreach ($taskName in $taskNames) {
+        try {
+            $task = Get-ScheduledTask -TaskName $taskName
+            if ($task.State -eq 'Running') {
+                Stop-ScheduledTask -TaskName $taskName
+                Write-Host ("Stopped task: " + $taskName)
+            } else {
+                Write-Host ("Task is not running: " + $taskName)
+            }
+        } catch {
+            Write-Host ("Error stopping task: " + $taskName)
+        }
+    }
+}
+
+
+function StartScheduledTasks($taskNames) {
+    foreach ($taskName in $taskNames) {
+        try {
+            $task = Get-ScheduledTask -TaskName $taskName
+            if ($task.State -ne 'Running') {
+                Start-ScheduledTask -TaskName $taskName
+                Write-Host ("Started task: " + $taskName)
+            } else {
+                Write-Host ("Task is already running: " + $taskName)
+            }
+        } catch {
+            Write-Host ("Error starting task: " + $taskName)
+        }
+    }
+}
