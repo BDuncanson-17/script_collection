@@ -1,0 +1,64 @@
+function Test-PsRemoting {
+    <#
+    .SYNOPSIS
+    Tests PowerShell remoting to a specified computer.
+
+    .DESCRIPTION
+    This function attempts to execute a remote PowerShell command to verify that remoting is properly set up and accessible with the provided credentials.
+
+    .PARAMETER computername
+    The name of the computer to which you want to test remoting.
+
+    .PARAMETER creds
+    The credentials object to use when attempting the remote command.
+
+    .EXAMPLE
+    Test-PsRemoting -computername "Server01" -creds (Get-Credential)
+
+    This example tests PSRemoting to "Server01" using the provided credentials.
+    #>
+    param(
+        [Parameter(Mandatory = $true, Position=0)]
+        [string]$computername, # Specifies the target computer name.
+
+        [Parameter(Mandatory = $true, Position=1)]
+        [pscredential]$creds # Specifies the credentials to use.
+    )
+    
+    # Initialize an error log path variable. You should define the path where you want the errors to be logged.
+    $ErrorLog = ######### ADD Path
+
+    try {
+        # Setting error action preference to Stop to catch the errors in try-catch block.
+        $errorActionPreference = "Stop"
+
+        # Execute a dummy command on the remote computer to test remoting.
+        $result = Invoke-Command -ComputerName $computername -Credential $creds { 1 }
+    } catch {
+        # Capturing the error message and line number.
+        $ErrorMessage = $_.Exception.Message
+        $ErrorLine = $_.InvocationInfo.ScriptLineNumber
+        $Time = Get-Date
+
+        # Writing to log file.
+        "$Time : Line: $ErrorLine Error: $ErrorMessage" | Out-File $ErrorLog -Append
+
+        # Returning $false to indicate failure.
+        return $false
+    }
+
+    # If the result is not as expected, log the error.
+    if ($result -ne 1) {
+        $ErrorMessage = "Remoting to $computerName returned an unexpected result."
+        $ErrorLine = $_.InvocationInfo.ScriptLineNumber
+
+        # Writing to log file.
+        "$Time : Line: $ErrorLine Error: $ErrorMessage" | Out-File $ErrorLog -Append
+
+        # Returning $false to indicate failure.
+        return $false
+    }
+
+    # If everything goes well, return $true to indicate success.
+    return $true
+}
