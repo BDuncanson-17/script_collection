@@ -62,3 +62,96 @@ function Test-PsRemoting {
     # If everything goes well, return $true to indicate success.
     return $true
 }
+
+
+
+
+
+
+# Define the path to the configuration files
+$ConfigPath = Join-Path $PSScriptRoot "config"
+
+$ConfigFilePath = Join-Path $ConfigPath "SchedConfig.csv"
+
+# Read the CSV file into an array
+$Configs = Get-Content -Path $ConfigFilePath
+
+# Create a hashtable to store the results for InBoxQueue
+$InBoxes = @{}
+
+# Loop through 14 iterations (assuming there are 14 configurations)
+for ($i = 0; $i -lt 14; $i++) {
+    # Read the current configuration from the array
+    $config = $Configs[$i].split(',')
+    $schedFQDN = "BDSECMAS" + $config[0] + ",bds.ad"
+    $nwUser = "bds\" + $config[2]
+    $protectedPath = "T:\" + $config[1] + "\ProtectedFolder"
+    
+    $securePassword = Get-Content -Path (Join-Path $ConfigPath ($config[2] + ".dat")) | ConvertTo-SecureString
+
+    # Create a PSCredential object
+    $credential = New-Object System.Management.Automation.PSCredential ($nwUser, $securePassword)
+
+    # Use Invoke-Command to run the command on the remote server    $result = Invoke-Command -ComputerName $schedFQDN -Credential $credential -ScriptBlock {
+        param($Path)
+        # Define the path where you want to list the directories
+        Get-ChildItem -Path $Path -Directory | Select-Object -ExpandProperty Name
+    } -ArgumentList $protectedPath
+
+    # Add the result to the InBoxQueue hashtable
+    $InBoxes[$config[0]] = $result
+}
+
+
+
+
+# Assuming $InBoxes is already populated by the previous script
+
+# Convert all results to an HTML table with conditional coloring
+$htmlTableRows = $InBoxes.GetEnumerator() | ForEach-Object {
+    if ($_.Value.Count -gt 30) {
+        # If more than 30 files, highlight in red
+        $row = "<tr><td>$($_.Key)</td><td style='color: red;'>$($_.Value.Count)</td></tr>"
+    } else {
+        # If 30 or fewer files, highlight in green
+        $row = "<tr><td>$($_.Key)</td><td style='color: green;'>$($_.Value.Count)</td></tr>"
+    }
+    return $row
+} | Out-String
+
+$htmlTable = "<table><tr><th>Scheduler Server</th><th>Size Of Queue</th></tr>$htmlTableRows</table>"
+
+# Now, $htmlTable contains an HTML string that can be used in an email body
+$emailBody = @"
+<html>
+<head>
+<style>
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+table, td, th {
+  border: 1px solid black;
+}
+th {
+  height: 50px;
+}
+th, td {
+  padding: 15px;
+  text-align: left;
+}
+</style>
+</head>
+<body>
+<h2>Directory Report</h2>
+<p>Below is the number of files in each configuration's directory:</p>
+$htmlTable
+</body>
+</html>
+"@
+
+# The $emailBody variable can now be used as the body of an email message
+
+
+
+
